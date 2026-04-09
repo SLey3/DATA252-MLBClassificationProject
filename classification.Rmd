@@ -37,6 +37,15 @@ df_small <- my_data %>% select(velocity, spin_rate, pitch_type,release_pos_z,rel
 ggpairs(df_small)
 ```
 
+# Sectoin 1.3 | Variable Explanation
+The categorical variable we will be trying to predict is the type of pitch being 
+thrown. There are 3 main categories with many different subcategories. Looking 
+at the numeric variables, it seems that velocity and spring rate have the 
+biggest impact, and release position on the x-axis also seems to have a largeish
+impact. Velocity is measured in MPH, and spin rate is calculated with RPM. 
+Release position X is the release position on the X axis, and release position 
+Z is the release position on the Y axis. 
+
 # Section 1.4 | Finding the Best K
 
 
@@ -113,4 +122,61 @@ cat("Accuracy:", round(accuracy, 4))
 cat("Error Rate:", round(1 - accuracy, 4))
 ```
 
-The model achieved 56.6% accuracy using k = 12. It classifies distinct pitch types well but struggles where velocity and spin rate overlap between classes, suggesting these four features alone have limits in separating every pitch type. \`\`\`
+The model achieved 56.6% accuracy using k = 12. It classifies distinct pitch types well but struggles where velocity and spin rate overlap between classes, suggesting these four features alone have limits in separating every pitch type. 
+
+#Section 1.5 | Classification Tree
+
+```{r}
+library(rpart)
+
+classTree<- rpart(pitch_type ~ .,
+                  data = baseball_train,
+                  method = "class")
+
+### PLOT TREE
+library(rpart.plot)
+rpart.plot(classTree)
+
+### Plot CP
+plotcp(classTree)
+
+printcp(classTree)
+
+## WHICH CP
+minCP<-classTree$cptable[which.min(classTree$cptable[,"xerror"]),"CP"]
+```
+#### Step 4: Prune the Tree
+
+Find the CP that minimizes the error.
+
+```{r}
+library(rpart.plot)
+
+prune_classTree <- prune(classTree, cp = minCP )
+rpart.plot(prune_classTree )
+```
+#### Step 5: Predict
+
+```{r}
+## DEFAULT TREE 
+### PREDICT
+predTree1<-predict(classTree , baseball_test, type="class")
+
+### CONFUSION MATRIX
+cmTree1<-table(baseball_test$pitch_type, predTree1)
+cmTree1
+
+#### CORRECT RATE
+mean(baseball_test$pitch_type==predTree1)
+
+## PRUNED TREE 
+### PREDICT
+predTree2<-predict(prune_classTree , baseball_test, type="class")
+
+### CONFUSION MATRIX
+cmTree2<-table(baseball_test$pitch_type, predTree2)
+cmTree2
+
+#### CORRECT RATE
+mean(baseball_test$pitch_type==predTree2)
+```
