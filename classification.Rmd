@@ -1,5 +1,6 @@
 ---
-title: "Untitled"
+names: D'Ante Dean,Nicholas Moore, & Sergio Ley
+title: "Classification Project"
 output: html_document
 date: "2026-03-31"
 ---
@@ -19,16 +20,14 @@ When you click the **Knit** button a document will be generated that includes bo
 ```{r}
 library(ggplot2)
 library(readr)
-library(readr)
 library(class)
 library(caret)
+library(GGally)
+library(dplyr)
 my_data <- read_csv("baseball.csv")
 ```
 
 ```{r}
-
-library(GGally)
-library(dplyr)
 
 # Select a manageable subset of columns
 df_small <- my_data %>% select(velocity, spin_rate, pitch_type,release_pos_z,release_pos_x)
@@ -36,15 +35,6 @@ df_small <- my_data %>% select(velocity, spin_rate, pitch_type,release_pos_z,rel
 # Run GGpairs
 ggpairs(df_small)
 ```
-
-# Sectoin 1.3 | Variable Explanation
-The categorical variable we will be trying to predict is the type of pitch being 
-thrown. There are 3 main categories with many different subcategories. Looking 
-at the numeric variables, it seems that velocity and spring rate have the 
-biggest impact, and release position on the x-axis also seems to have a largeish
-impact. Velocity is measured in MPH, and spin rate is calculated with RPM. 
-Release position X is the release position on the X axis, and release position 
-Z is the release position on the Y axis. 
 
 # Section 1.4 | Finding the Best K
 
@@ -121,62 +111,58 @@ cat("Accuracy:", round(accuracy, 4))
 # Error rate
 cat("Error Rate:", round(1 - accuracy, 4))
 ```
-
-The model achieved 56.6% accuracy using k = 12. It classifies distinct pitch types well but struggles where velocity and spin rate overlap between classes, suggesting these four features alone have limits in separating every pitch type. 
-
-#Section 1.5 | Classification Tree
+The model achieved 56.6% accuracy using k = 12. It classifies distinct pitch types well but struggles where velocity and spin rate overlap between classes, suggesting these four features alone have limits in separating every pitch type. \`\`\`
 
 ```{r}
+# =========================
+# Section 1.5 | Classification Tree
+# =========================
+
 library(rpart)
-
-classTree<- rpart(pitch_type ~ .,
-                  data = baseball_train,
-                  method = "class")
-
-### PLOT TREE
-library(rpart.plot)
-rpart.plot(classTree)
-
-### Plot CP
-plotcp(classTree)
-
-printcp(classTree)
-
-## WHICH CP
-minCP<-classTree$cptable[which.min(classTree$cptable[,"xerror"]),"CP"]
-```
-#### Step 4: Prune the Tree
-
-Find the CP that minimizes the error.
-
-```{r}
 library(rpart.plot)
 
-prune_classTree <- prune(classTree, cp = minCP )
-rpart.plot(prune_classTree )
+set.seed(1)
+
+library(rpart)
+library(rpart.plot)
+
+set.seed(1)
+
+# Train classification tree model
+tree_model <- rpart(
+  pitch_type ~ velocity + spin_rate + release_pos_z + release_pos_x,
+  data = baseball_train,
+  method = "class"
+)
+
+# Plot the tree
+rpart.plot(
+  tree_model,
+  type = 2,           # label all nodes clearly
+  extra = 104,        # shows class + probabilities + % of observations
+  fallen.leaves = TRUE,
+  box.palette = "RdYlGn",  # color gradient (red → yellow → green)
+  shadow.col = "gray",
+  nn = TRUE           # show node numbers
+)
+
+# Make predictions on test data
+tree_pred <- predict(tree_model, baseball_test, type = "class")
+
+# Confusion Matrix
+cm_tree <- table(Predicted = tree_pred, Actual = baseball_test$pitch_type)
+cm_tree
+
+# Accuracy
+tree_accuracy <- mean(tree_pred == baseball_test$pitch_type)
+cat("Tree Accuracy:", round(tree_accuracy, 4), "\n")
+
+# Error Rate
+cat("Tree Error Rate:", round(1 - tree_accuracy, 4), "\n")
+
+# Complexity table
+printcp(tree_model)
 ```
-#### Step 5: Predict
+The classification tree model was used to predict pitch type based on velocity, spin rate, and release position variables. The model creates rule-based splits that make the classification process easy to interpret, with the tree showing how different thresholds separate pitch types.
 
-```{r}
-## DEFAULT TREE 
-### PREDICT
-predTree1<-predict(classTree , baseball_test, type="class")
-
-### CONFUSION MATRIX
-cmTree1<-table(baseball_test$pitch_type, predTree1)
-cmTree1
-
-#### CORRECT RATE
-mean(baseball_test$pitch_type==predTree1)
-
-## PRUNED TREE 
-### PREDICT
-predTree2<-predict(prune_classTree , baseball_test, type="class")
-
-### CONFUSION MATRIX
-cmTree2<-table(baseball_test$pitch_type, predTree2)
-cmTree2
-
-#### CORRECT RATE
-mean(baseball_test$pitch_type==predTree2)
-```
+The model achieved an accuracy of 55.5%, indicating that it captures general patterns in the data but still struggles when pitch characteristics overlap between classes. Compared to KNN, the tree is more interpretative because it clearly shows how decisions are made, but it may be less flexible in handling complex boundaries between pitch types.
