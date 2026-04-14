@@ -171,6 +171,30 @@ The classification tree model was used to predict pitch type based on velocity, 
 
 The model achieved an accuracy of 55.5%, indicating that it captures general patterns in the data but still struggles when pitch characteristics overlap between classes. Compared to KNN, the tree is more interpretative because it clearly shows how decisions are made, but it may be less flexible in handling complex boundaries between pitch types.
 
+#1.6 Bagging
+```{r}
+### BAG
+set.seed(252)
+caretBag <- train(pitch_type ~., 
+               data = baseball_train, 
+               method = "treebag",
+               trControl = trainControl("cv", number = 10),
+               importance = TRUE
+)
+
+predCaretBag <- caretBag %>% predict(baseball_test)
+
+# CONFUSION MATRIX
+table(predCaretBag, baseball_test$pitch_type)
+
+# CORRECT RATE
+mean(predCaretBag == baseball_test$pitch_type)
+
+## CORRECT RATE
+mean(baseball_test$pitch_type==predBag)
+vip(caretBag) 
+```
+
 # Section 1.6 | Random Forests
 
 ```{r}
