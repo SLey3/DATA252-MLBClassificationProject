@@ -24,6 +24,8 @@ library(class)
 library(caret)
 library(GGally)
 library(dplyr)
+library(randomForest)
+library(vip)
 my_data <- read_csv("baseball.csv")
 ```
 
@@ -113,6 +115,8 @@ cat("Error Rate:", round(1 - accuracy, 4))
 ```
 The model achieved 56.6% accuracy using k = 12. It classifies distinct pitch types well but struggles where velocity and spin rate overlap between classes, suggesting these four features alone have limits in separating every pitch type. \`\`\`
 
+# Section 1.5
+
 ```{r}
 # =========================
 # Section 1.5 | Classification Tree
@@ -166,3 +170,42 @@ printcp(tree_model)
 The classification tree model was used to predict pitch type based on velocity, spin rate, and release position variables. The model creates rule-based splits that make the classification process easy to interpret, with the tree showing how different thresholds separate pitch types.
 
 The model achieved an accuracy of 55.5%, indicating that it captures general patterns in the data but still struggles when pitch characteristics overlap between classes. Compared to KNN, the tree is more interpretative because it clearly shows how decisions are made, but it may be less flexible in handling complex boundaries between pitch types.
+
+# Section 1.6 | Random Forests
+
+```{r}
+set.seed(252)
+
+caretRF <- train(pitch_type ~ .,
+  data = baseball_train,
+  method = "rf",
+  trControl = trainControl("cv", number = 10),
+  importance = TRUE
+)
+
+# Best tuning parameter
+caretRF$bestTune
+
+# Final model
+caretRF$finalModel
+
+## PREDICT
+predCaretRF <- caretRF %>% predict(baseball_test)
+
+## TABLE
+table(predCaretRF, baseball_test$pitch_type)
+
+## MEAN
+mean(predCaretRF == baseball_test$pitch_type)
+```
+```{r}
+# Plot MeanDecreaseAccuracy
+varImpPlot(caretRF$finalModel, type = 1)
+
+# Plot MeanDecreaseGini
+varImpPlot(caretRF$finalModel, type = 2)
+
+vip(caretRF$finalModel, type = 1) 
+vip(caretRF$finalModel, type = 2) 
+```
+
