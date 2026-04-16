@@ -26,6 +26,7 @@ library(GGally)
 library(dplyr)
 library(randomForest)
 library(vip)
+library(gbm)
 my_data <- read_csv("baseball.csv")
 ```
 
@@ -191,7 +192,7 @@ table(predCaretBag, baseball_test$pitch_type)
 mean(predCaretBag == baseball_test$pitch_type)
 
 ## CORRECT RATE
-mean(baseball_test$pitch_type==predBag)
+mean(baseball_test$pitch_type == predCaretBag)
 vip(caretBag) 
 ```
 
@@ -233,3 +234,47 @@ vip(caretRF$finalModel, type = 1)
 vip(caretRF$finalModel, type = 2) 
 ```
 
+
+
+```{r}
+# Section 1.7 | Boosting
+
+set.seed(252)
+
+caretBoost <- train(
+  pitch_type ~ .,
+  data = baseball_train,
+  method = "gbm",
+  trControl = trainControl("cv", number = 10),
+  verbose = FALSE
+)
+
+# Best tuning parameters
+caretBoost$bestTune
+
+# Final model
+caretBoost$finalModel
+
+# Predict on test data
+predCaretBoost <- predict(caretBoost, baseball_test)
+
+# Confusion Matrix
+table(Predicted = predCaretBoost, Actual = baseball_test$pitch_type)
+
+# Accuracy
+boost_accuracy <- mean(predCaretBoost == baseball_test$pitch_type)
+cat("Boosting Accuracy:", round(boost_accuracy, 4), "\n")
+
+# Error Rate
+cat("Boosting Error Rate:", round(1 - boost_accuracy, 4), "\n")
+```
+```{r}
+# Variable importance for boosting
+vip(caretBoost$finalModel)
+varImp(caretBoost)
+```
+
+
+Boosting was used to improve classification by building many small trees sequentially, where each new tree focuses more on the observations that were harder to classify in earlier rounds. This makes boosting different from bagging and random forests, since those methods build trees more independently.
+
+The boosting model was trained using cross-validation and then tested on the holdout test set. Its performance can be evaluated using the confusion matrix, accuracy, and error rate shown above. If the accuracy is higher than the single classification tree, that suggests boosting was able to better capture more complex patterns in pitch type classification.
