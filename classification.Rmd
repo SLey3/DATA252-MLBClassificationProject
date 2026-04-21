@@ -278,3 +278,18 @@ varImp(caretBoost)
 Boosting was used to improve classification by building many small trees sequentially, where each new tree focuses more on the observations that were harder to classify in earlier rounds. This makes boosting different from bagging and random forests, since those methods build trees more independently.
 
 The boosting model was trained using cross-validation and then tested on the holdout test set. Its performance can be evaluated using the confusion matrix, accuracy, and error rate shown above. If the accuracy is higher than the single classification tree, that suggests boosting was able to better capture more complex patterns in pitch type classification.
+
+```{r}
+baseball_train_filt <- baseball_train %>%
+  filter(pitch_type == 'FF' | pitch_type == 'SL')
+baseball_test_filt <- baseball_test %>%
+  filter(pitch_type == 'FF' | pitch_type == 'SL')
+head(baseball_train)
+```
+
+
+#5
+```{r}
+modbase <- glm(pitch_type ~ velocity, data = baseball_train_filt, family = "binomial")
+summary(modbase)
+```
