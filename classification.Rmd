@@ -279,17 +279,166 @@ Boosting was used to improve classification by building many small trees sequent
 
 The boosting model was trained using cross-validation and then tested on the holdout test set. Its performance can be evaluated using the confusion matrix, accuracy, and error rate shown above. If the accuracy is higher than the single classification tree, that suggests boosting was able to better capture more complex patterns in pitch type classification.
 
-```{r}
-baseball_train_filt <- baseball_train %>%
-  filter(pitch_type == 'FF' | pitch_type == 'SL')
-baseball_test_filt <- baseball_test %>%
-  filter(pitch_type == 'FF' | pitch_type == 'SL')
-head(baseball_train)
-```
-
 
 #5
 ```{r}
+baseball_train_filt <- baseball_train %>%
+  filter(pitch_type == 'FF' | pitch_type == 'SL')%>%
+  mutate(pitch_type = if_else(pitch_type == "FF", 1, 0))
+baseball_test_filt <- baseball_test %>%
+  filter(pitch_type == 'FF' | pitch_type == 'SL')%>%
+  mutate(pitch_type = if_else(pitch_type == "FF", 1, 0))
+
 modbase <- glm(pitch_type ~ velocity, data = baseball_train_filt, family = "binomial")
 summary(modbase)
+# logistic
+ggplot(data=baseball_train_filt, aes(x=velocity, y=pitch_type))+
+  geom_point()+
+  geom_line(aes(x = velocity, y = modbase$fitted), color="blue")
+```
+#6
+```{r}
+slope<-modbase$coefficients[2]
+slope
+```
+
+#7
+```{r}
+pred1<-predict(modbase, newdata = baseball_test_filt)
+head(pred1)
+```
+
+
+
+```{r}
+# PREDICT (Response)
+pred1R<-predict(modbase, newdata = baseball_test_filt, type="response")
+head(pred1R)
+# This is the same as using the plogis function on the predicted values of the log odds.
+head(plogis(pred1))
+
+# do the prediction for just one person with Glucose of 150
+predict(modbase,newdata = data.frame(velocity = 1), type = "response")
+
+# To do the prediction by hand:
+modbase$coefficients
+1/(exp(-(modbase$coefficients[1]+modbase$coefficients[2]*1))+1) 
+```
+#8
+```{r}
+conf_mat1<-data.frame(testOutcome=baseball_test_filt$pitch_type, predOut=pred1R>.5)
+table(conf_mat1$predOut, conf_mat1$testOutcome)
+
+## CORRECT RATE
+mean(conf_mat1$predOut==conf_mat1$testOutcome)
+
+
+conf_mat2<-data.frame(testOutcome=baseball_test_filt$pitch_type, predOut=pred1R>.3)
+table(conf_mat2$predOut, conf_mat2$testOutcome)
+
+## CORRECT RATE
+mean(conf_mat2$predOut==conf_mat2$testOutcome)
+```
+
+```{r}
+library(GGally)
+
+baseball_train_filt$pitch_type<-as.factor(baseball_train_filt$pitch_type)
+
+ggpairs(baseball_train_filt, 
+        ggplot2::aes(color=factor(pitch_type)))
+
+```
+#10
+```{r}
+modMulti<-glm(pitch_type ~.,
+          data = baseball_train_filt, family = "binomial")
+
+summary(modMulti)
+
+```
+#11
+```{r}
+library(bestglm)
+step(modMulti)
+mod0 <- glm(pitch_type ~ 1, family = binomial, data = baseball_train_filt)
+
+## FORWARD Selection
+step(mod0, scope = list(upper = modMulti, lower = mod0), 
+     method = "forward")
+# the Xy matrix needs y as the right-most variable
+# trainCaret already has Outcome at the last column
+# Also bestglm requires a data.frame, not a tibble. 
+best.Xy <- as.data.frame(baseball_train_filt)
+
+# Run best subset
+bglm.AIC = bestglm(Xy = best.Xy, family = binomial, IC = "AIC", 
+                   TopModels = 10)
+bglm.AIC$BestModels
+
+```
+#12
+
+```{r}
+modBest<-glm(pitch_type ~velocity + spin_rate + release_pos_x,
+          data = baseball_train_filt, family = "binomial")
+
+summary(modBest)
+```
+
+```{r}
+
+predBest<-predict(modBest, newdata = baseball_test_filt, type="response")
+conf_matBest<-data.frame(testOutcome=baseball_test_filt$pitch_type, predOut=predBest>.5)
+
+## Confusion Matrix
+table(conf_matBest$predOut, conf_matBest$testOutcome)
+
+## CORRECT RATE
+mean(conf_matBest$predOut==conf_matBest$testOutcome)
+```
+
+
+#13
+```{r}
+"A"
+## Confusion Matrix
+table(conf_mat1$predOut, conf_mat1$testOutcome)
+
+## CORRECT RATE
+mean(conf_mat1$predOut==conf_mat1$testOutcome)
+
+"B"
+
+## Confusion Matrix
+table(conf_matBest$predOut, conf_matBest$testOutcome)
+
+## CORRECT RATE
+mean(conf_matBest$predOut==conf_matBest$testOutcome)
+
+"C"
+
+## need train, test, cl, and k
+trainbase<-baseball_train_filt%>%
+  select(-pitch_type)
+
+testbase<-baseball_test_filt%>%
+  select(-pitch_type)
+
+trainOut<-baseball_train_filt$pitch_type
+testOut<-baseball_test_filt$pitch_type
+
+library(class)
+
+## best pred...
+knn.pred12=knn(train = trainbase,
+              test = testbase,
+              cl = trainOut,
+              k=12)
+
+table(knn.pred12,testOut)
+
+## CORRECT RATE
+mean(knn.pred12==testOut)
+
 ```
